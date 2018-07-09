@@ -1,3 +1,10 @@
+/*
+*
+* Universal Mobile Token smart contract
+* Developed by Phenom.team <info@phenom.team>   
+*
+*/
+
 pragma solidity ^0.4.24;
 
 
@@ -128,20 +135,32 @@ contract Token is Ownable {
         name = "Universal Mobile Token";
         symbol = "UMT";
         decimals = 18;   
-        // Make Owner also an emitter
+        // Make the Owner also an emitter
         emitters[msg.sender] = true;
     }
 
+    /**
+    *   @dev Finish minting process
+    */
     function finishMinting() public onlyOwner {
         mintingIsFinished = true;
         transferIsPossible = true;
     }
 
+    /**
+    *   @dev Send coins
+    *   throws on any error rather then return a false flag to minimize
+    *   user errors
+    *   @param _to           target address
+    *   @param _value       transfer amount
+    *
+    *   @return true if the transfer was successful
+    */
     function transfer(address _to, uint _value) public returns (bool success) {
         // Make transfer only if transfer is possible
         require(transferIsPossible);
 
-        require(_to != address(0));
+        require(_to != address(0) && _to != address(this));
         require(_value <= balances[msg.sender]);
         
         balances[msg.sender] = balances[msg.sender].sub(_value);
@@ -150,6 +169,20 @@ contract Token is Ownable {
         return true;
     }
 
+    /**
+    *   @dev Allows another account/contract to spend some tokens on its behalf
+    *   throws on any error rather then return a false flag to minimize user errors
+    *
+    *   also, to minimize the risk of the approve/transferFrom attack vector
+    *   approve has to be called twice in 2 separate transactions - once to
+    *   change the allowance to 0 and secondly to change it to the new allowance
+    *   value
+    *
+    *   @param _spender      approved address
+    *   @param _value       allowance amount
+    *
+    *   @return true if the approval was successful
+    */
     function approve(address _spender, uint _value) public returns (bool success) {
         require((_value == 0) || (allowed[msg.sender][_spender] == 0));
         allowed[msg.sender][_spender] = _value;
@@ -157,11 +190,21 @@ contract Token is Ownable {
         return true;
     }
 
+    /**
+    *   @dev An account/contract attempts to get the coins
+    *   throws on any error rather then return a false flag to minimize user errors
+    *
+    *   @param _from         source address
+    *   @param _to           target address
+    *   @param _value        amount
+    *
+    *   @return true if the transfer was successful
+    */
     function transferFrom(address _from, address _to, uint _value) public returns (bool success) {
         // Make transfer only if transfer is possible
         require(transferIsPossible);
 
-        require(_to != address(0));
+        require(_to != address(0) && _to != address(this));
         require(_value <= balances[_from]);
         require(_value <= allowed[_from][msg.sender]);
 
@@ -172,14 +215,30 @@ contract Token is Ownable {
         return true;
     }
 
+    /**
+    *   @dev Add an emitter account
+    *   
+    *   @param _emitter     emitter's address
+    */
     function addEmitter(address _emitter) public onlyOwner {
         emitters[_emitter] = true;
     }
     
+    /**
+    *   @dev Remove an emitter account
+    *   
+    *   @param _emitter     emitter's address
+    */
     function removeEmitter(address _emitter) public onlyOwner {
         emitters[_emitter] = false;
     }
     
+    /**
+    *   @dev Mint token in batches
+    *   
+    *   @param _adresses     token holders' adresses
+    *   @param _values       token holders' values
+    */
     function batchMint(address[] _adresses, uint[] _values) public onlyEmitter {
         require(_adresses.length == _values.length);
         for (uint i = 0; i < _adresses.length; i++) {
@@ -188,14 +247,24 @@ contract Token is Ownable {
         }
     }
 
+    /**
+    *   @dev Transfer token in batches
+    *   
+    *   @param _adresses     token holders' adresses
+    *   @param _values       token holders' values
+    */
     function batchTransfer(address[] _adresses, uint[] _values) public {
         require(_adresses.length == _values.length);
         for (uint i = 0; i < _adresses.length; i++) {
             require(transfer(_adresses[i], _values[i]));
-            emit Transfer(msg.sender, _adresses[i], _values[i]);
         }
     }
 
+    /**
+    *   @dev Burn Tokens
+    *   @param _from       token holder address which the tokens will be burnt
+    *   @param _value      number of tokens to burn
+    */
     function burn(address _from, uint _value) public onlyEmitter {
         // Burn tokens only if minting stage is not finished
         require(!mintingIsFinished);
@@ -205,10 +274,25 @@ contract Token is Ownable {
         totalSupply = totalSupply.sub(_value);
     }
 
-    function allowance(address tokenOwner, address spender) public constant returns (uint remaining) {
-        return allowed[tokenOwner][spender];
+    /**
+    *   @dev Function to check the amount of tokens that an owner allowed to a spender.
+    *
+    *   @param _tokenOwner        the address which owns the funds
+    *   @param _spender      the address which will spend the funds
+    *
+    *   @return              the amount of tokens still avaible for the spender
+    */
+    function allowance(address _tokenOwner, address _spender) public constant returns (uint remaining) {
+        return allowed[_tokenOwner][_spender];
     }
 
+    /**
+    *   @dev Function to check the amount of tokens that _tokenOwner has.
+    *
+    *   @param _tokenOwner        the address which owns the funds
+    *
+    *   @return              the amount of tokens _tokenOwner has
+    */
     function balanceOf(address _tokenOwner) public constant returns (uint balance) {
         return balances[_tokenOwner];
     }
