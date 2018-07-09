@@ -161,7 +161,6 @@ contract Token is Ownable {
         require(transferIsPossible);
 
         require(_to != address(0) && _to != address(this));
-        require(_value <= balances[msg.sender]);
         
         balances[msg.sender] = balances[msg.sender].sub(_value);
         balances[_to] = balances[_to].add(_value);
@@ -205,8 +204,6 @@ contract Token is Ownable {
         require(transferIsPossible);
 
         require(_to != address(0) && _to != address(this));
-        require(_value <= balances[_from]);
-        require(_value <= allowed[_from][msg.sender]);
 
         balances[_from] = balances[_from].sub(_value);
         allowed[_from][msg.sender] = allowed[_from][msg.sender].sub(_value);
